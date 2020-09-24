@@ -25,3 +25,7 @@ code {
   max-width: 400px;
   font: 12px/20px "Helvetica Neue", Arial, Helvetica, sans-serif;
 }
+
+.error {
+  color: rgb(161, 0, 0);
+}

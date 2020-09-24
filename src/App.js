@@ -3,8 +3,9 @@ import "./App.css";
 import { SearchCard } from "./components/SearchCard";
 import { ChurchCard } from "./components/ChurchCard";
 import updateChurches from "./services/updateChurhes";
-import fetchChurchesAPI from "./services/fetchChurhes";
+
 import addLayer from "./services/mapAddSource";
+import { useHttp } from "./hooks/fetch.hook";
 
 var mapboxgl = require("mapbox-gl/dist/mapbox-gl.js");
 mapboxgl.accessToken =
@@ -15,15 +16,20 @@ var map = new mapboxgl.Map({
   center: [-73.9302941747, 40.737360644],
   zoom: 11.15,
 });
-var mapLayerNumber = 0;
 
 function App() {
+  const { loading, request, error } = useHttp();
   const [coords, setCoords] = useState({
     longitude: "-73.9302941747",
     latitude: "40.737360644",
   });
   function updateCoords(newCoords) {
     setCoords(newCoords);
+
+    map.flyTo({
+      center: [+newCoords.longitude, +newCoords.latitude],
+      essential: true,
+    });
   }
 
   const [chosenChurch, setChurch] = useState({
@@ -33,30 +39,38 @@ function App() {
     tel: "",
   });
 
+  map.on("moveend", () => {
+    const currentCoords = map.getCenter();
+    setCoords({ longitude: currentCoords.lng, latitude: currentCoords.lat });
+  });
+
   useEffect(() => {
     async function createPopups() {
-      const churches = await fetchChurchesAPI(coords);
+      const churches = await request(
+        `https://apiv4.updateparishdata.org/Churchs/?lat=${coords.latitude}&long=${coords.longitude}&pg=1`
+      );
       const updatedChurches = updateChurches(churches);
-      addLayer(map, `churches${mapLayerNumber}`, updatedChurches);
+      addLayer(map, `churches`, updatedChurches);
 
-      map.on("click", `churches${mapLayerNumber}`, function (e) {
+      map.on("click", `churches`, function (e) {
         setChurch(JSON.parse(e.features[0].properties.info));
       });
-      mapLayerNumber += 1;
     }
 
-    map.flyTo({
-      center: [+coords.longitude, +coords.latitude],
-      essential: true,
-    });
-    createPopups();
+    if (!loading) {
+      createPopups();
+    }
   }, [coords]);
 
   return (
     <div className="App">
       <div id="infoContainer">
         <SearchCard search={updateCoords}></SearchCard>
-        <ChurchCard church={chosenChurch}></ChurchCard>
+        <ChurchCard
+          church={chosenChurch}
+          loading={loading}
+          error={error}
+        ></ChurchCard>
       </div>
     </div>
   );
