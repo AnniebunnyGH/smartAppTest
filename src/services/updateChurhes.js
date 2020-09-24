@@ -1,4 +1,5 @@
-export default function updateChurches(churches) {
+export function updateChurchesList(churches) {
+  console.log(churches);
   const updatedChurches = churches.map((elem) => {
     return {
       type: "Feature",

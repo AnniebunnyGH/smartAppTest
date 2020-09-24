@@ -13,7 +13,6 @@ export const useHttp = () => {
         throw new Error("not found");
       }
       setLoading(false);
-
       return res;
     } catch (e) {
       setLoading(false);

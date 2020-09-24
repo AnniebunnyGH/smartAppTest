@@ -2,30 +2,25 @@ import React, { useEffect, useState } from "react";
 import "./App.css";
 import { SearchCard } from "./components/SearchCard";
 import { ChurchCard } from "./components/ChurchCard";
-import updateChurches from "./services/updateChurhes";
-
+import { updateChurchesList } from "./services/updateChurhes";
+import updateMapSource from "./services/updatMapSource";
 import addLayer from "./services/mapAddSource";
 import { useHttp } from "./hooks/fetch.hook";
-
-var mapboxgl = require("mapbox-gl/dist/mapbox-gl.js");
-mapboxgl.accessToken =
-  "pk.eyJ1IjoiYW5uaWVidW5ueW1iIiwiYSI6ImNrYXV3a3FyZDA2OHgycnU5MzJ0eWVtd20ifQ.VEDWv1Llwk54uBap2b8lFQ";
-var map = new mapboxgl.Map({
-  container: "mapContainer",
-  style: "mapbox://styles/mapbox/streets-v11",
-  center: [-73.9302941747, 40.737360644],
-  zoom: 11.15,
-});
+import { filterUniqCherches } from "./services/filterUniqChurches";
+import { map } from "./services/initMap";
 
 function App() {
-  const { loading, request, error } = useHttp();
+  const { request, error } = useHttp();
+  const [isLoading, setLoading] = useState(false);
+  const [isMapSourceInited, setSourceInited] = useState(false);
+  const [churches, setChurches] = useState([]);
   const [coords, setCoords] = useState({
     longitude: "-73.9302941747",
     latitude: "40.737360644",
   });
+
   function updateCoords(newCoords) {
     setCoords(newCoords);
-
     map.flyTo({
       center: [+newCoords.longitude, +newCoords.latitude],
       essential: true,
@@ -44,20 +39,32 @@ function App() {
     setCoords({ longitude: currentCoords.lng, latitude: currentCoords.lat });
   });
 
+  map.on("click", "churches", function (e) {
+    console.log(JSON.parse(e.features[0].properties.info));
+    const res = JSON.parse(e.features[0].properties.info);
+    setChurch(res);
+  });
+
   useEffect(() => {
     async function createPopups() {
-      const churches = await request(
-        `https://apiv4.updateparishdata.org/Churchs/?lat=${coords.latitude}&long=${coords.longitude}&pg=1`
-      );
-      const updatedChurches = updateChurches(churches);
-      addLayer(map, `churches`, updatedChurches);
+      setLoading(true);
+      const url = `https://apiv4.updateparishdata.org/Churchs/?lat=${coords.latitude}&long=${coords.longitude}&pg=1`;
+      const res = await request(url);
 
-      map.on("click", `churches`, function (e) {
-        setChurch(JSON.parse(e.features[0].properties.info));
-      });
+      const newChurchesList = filterUniqCherches(churches, res);
+      setChurches(newChurchesList);
+      const updatedChurches = updateChurchesList(newChurchesList);
+
+      if (isMapSourceInited && newChurchesList.length !== churches.length) {
+        updateMapSource(updatedChurches);
+      } else if (!isMapSourceInited) {
+        addLayer(updatedChurches);
+        setSourceInited(true);
+      }
+      setLoading(false);
     }
 
-    if (!loading) {
+    if (!isLoading) {
       createPopups();
     }
   }, [coords]);
@@ -68,7 +75,7 @@ function App() {
         <SearchCard search={updateCoords}></SearchCard>
         <ChurchCard
           church={chosenChurch}
-          loading={loading}
+          loading={isLoading}
           error={error}
         ></ChurchCard>
       </div>
