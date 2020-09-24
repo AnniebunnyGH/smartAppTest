@@ -20,7 +20,7 @@ export default function addLayer(map, layerName, updatedChurches) {
     },
   });
 
-  map.map.on("mouseenter", layerName, function () {
+  map.on("mouseenter", layerName, function () {
     map.getCanvas().style.cursor = "pointer";
   });
 
