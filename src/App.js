@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import "./App.css";
 import { SearchCard } from "./components/SearchCard";
 import { ChurchCard } from "./components/ChurchCard";
@@ -34,16 +34,16 @@ function App() {
     tel: "",
   });
 
-  map.on("moveend", () => {
-    const currentCoords = map.getCenter();
-    setCoords({ longitude: currentCoords.lng, latitude: currentCoords.lat });
-  });
-
-  map.on("click", "churches", function (e) {
-    console.log(JSON.parse(e.features[0].properties.info));
-    const res = JSON.parse(e.features[0].properties.info);
-    setChurch(res);
-  });
+  useEffect(() => {
+    map.on("moveend", () => {
+      const currentCoords = map.getCenter();
+      setCoords({ longitude: currentCoords.lng, latitude: currentCoords.lat });
+    });
+    map.on("click", "places", function (e) {
+      const res = JSON.parse(e.features[0].properties.info);
+      setChurch(res);
+    });
+  }, []);
 
   useEffect(() => {
     async function createPopups() {
